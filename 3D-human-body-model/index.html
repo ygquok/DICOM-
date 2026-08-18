@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DICOM 三维人体模型工具</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar">
+        <div class="brand">
+          <span class="logo">🫀</span>
+          <div>
+            <h1>DICOM 三维人体模型工具</h1>
+            <p>基于 CT/MR DICOM 序列 · 体绘制 · 骨骼/器官分色</p>
+          </div>
+        </div>
+        <div id="status" class="status">就绪</div>
+      </header>
+
+      <div id="layout">
+        <aside id="panel">
+          <section class="card">
+            <h2>数据加载</h2>
+            <div id="dropzone" tabindex="0">
+              <div class="dz-icon">📁</div>
+              <div class="dz-text">
+                拖入 DICOM 文件 / 文件夹 / ZIP<br />
+                <small>支持 .dcm、文件夹、.zip 压缩包</small>
+              </div>
+            </div>
+            <input type="file" id="fileInput" multiple hidden />
+            <input type="file" id="folderInput" webkitdirectory multiple hidden />
+            <div class="btn-row">
+              <button id="btnPickFiles">选择文件</button>
+              <button id="btnPickFolder">选择文件夹</button>
+              <button id="btnDemo" class="primary">加载演示模型</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>渲染设置</h2>
+
+            <label class="field">
+              <span>最大分辨率</span>
+              <select id="resSelect">
+                <option value="256" selected>256（快速）</option>
+                <option value="384">384（均衡）</option>
+                <option value="512">512（高质量）</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>骨骼阈值 (HU)</span>
+              <input type="range" id="boneThreshold" min="120" max="600" step="10" value="300" />
+              <output id="boneThresholdVal">300</output>
+            </label>
+
+            <label class="field">
+              <span>器官 / 软组织颜色</span>
+              <input type="color" id="organColor" value="#f07054" />
+            </label>
+
+            <label class="field">
+              <span>骨骼颜色</span>
+              <input type="color" id="boneColor" value="#f8ebc7" />
+            </label>
+
+            <label class="field">
+              <span>器官不透明度</span>
+              <input type="range" id="organOpacity" min="0" max="1" step="0.01" value="0.20" />
+              <output id="organOpacityVal">0.20</output>
+            </label>
+
+            <label class="field">
+              <span>骨骼不透明度</span>
+              <input type="range" id="boneOpacity" min="0" max="1" step="0.01" value="1.00" />
+              <output id="boneOpacityVal">1.00</output>
+            </label>
+
+            <label class="field">
+              <span>整体亮度</span>
+              <input type="range" id="alphaScale" min="0.2" max="2" step="0.05" value="1" />
+              <output id="alphaScaleVal">1.00</output>
+            </label>
+
+            <label class="field checkbox">
+              <input type="checkbox" id="shading" checked />
+              <span>光影着色（增强立体感）</span>
+            </label>
+
+            <div class="btn-row">
+              <button id="btnReset">重置视角</button>
+              <button id="btnScreenshot">保存截图</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>肺部病变高亮</h2>
+            <label class="field checkbox">
+              <input type="checkbox" id="lesionEnabled" checked />
+              <span>启用病变检测与高亮</span>
+            </label>
+
+            <label class="field">
+              <span>病变颜色</span>
+              <input type="color" id="lesionColor" value="#2196f3" />
+            </label>
+
+            <label class="field">
+              <span>病变不透明度</span>
+              <input type="range" id="lesionOpacity" min="0" max="1" step="0.01" value="1.00" />
+              <output id="lesionOpacityVal">1.00</output>
+            </label>
+
+            <label class="field">
+              <span>病变 HU 下限</span>
+              <input type="range" id="lesionMin" min="-900" max="0" step="10" value="-400" />
+              <output id="lesionMinVal">-400</output>
+            </label>
+
+            <label class="field">
+              <span>病变 HU 上限</span>
+              <input type="range" id="lesionMax" min="-200" max="600" step="10" value="200" />
+              <output id="lesionMaxVal">200</output>
+            </label>
+
+            <p class="hint-line">通过 HU 阈值 + 肺野空气区域识别磨玻璃影、结节与实变。调整阈值可改变检出范围。</p>
+          </section>
+
+          <section class="card">
+            <h2>截面窗宽窗位</h2>
+            <label class="field">
+              <span>窗宽 WW</span>
+              <input type="range" id="wwSlider" min="100" max="4000" step="50" value="1600" />
+              <output id="wwVal">1600</output>
+            </label>
+            <label class="field">
+              <span>窗位 WL</span>
+              <input type="range" id="wlSlider" min="-1000" max="1000" step="10" value="-500" />
+              <output id="wlVal">-500</output>
+            </label>
+            <label class="field checkbox">
+              <input type="checkbox" id="obliqueEnabled" />
+              <span>启用斜位重建（Oblique）</span>
+            </label>
+            <p class="hint-line">调节截面视图灰度窗宽窗位；切片上可点击定位切面。</p>
+          </section>
+
+          <section class="card">
+            <h2>模型信息</h2>
+            <div id="info" class="info">
+              <p class="muted">尚未加载数据。点击「加载演示模型」可立即体验。</p>
+            </div>
+          </section>
+        </aside>
+
+        <main id="main">
+          <div id="grid">
+            <div class="grid-cell" id="cell3d">
+              <div class="cell-head">🫀 3D 体绘制</div>
+              <div id="canvasWrap">
+                <canvas id="gl"></canvas>
+                <div id="hint">🖱 左键旋转 · 滚轮缩放 · 右键平移</div>
+                <div id="overlay" class="overlay hidden">
+                  <div class="spinner"></div>
+                  <div id="overlayText">处理中…</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-cell">
+              <div class="cell-head"><span class="dot dz"></span>轴位 Z（横断面）</div>
+              <canvas id="sliceZ" class="slice-canvas"></canvas>
+              <div class="slice-ctl">
+                <input type="range" id="sliceZSlider" min="0" max="100" value="0" />
+                <output id="sliceZVal">0</output>
+              </div>
+            </div>
+
+            <div class="grid-cell">
+              <div class="cell-head"><span class="dot dy"></span>冠状 Y（冠状面）</div>
+              <canvas id="sliceY" class="slice-canvas"></canvas>
+              <div class="slice-ctl">
+                <input type="range" id="sliceYSlider" min="0" max="100" value="0" />
+                <output id="sliceYVal">0</output>
+              </div>
+            </div>
+
+            <div class="grid-cell">
+              <div class="cell-head"><span class="dot dx"></span>矢状 X（矢状面）</div>
+              <canvas id="sliceX" class="slice-canvas"></canvas>
+              <div class="slice-ctl">
+                <input type="range" id="sliceXSlider" min="0" max="100" value="0" />
+                <output id="sliceXVal">0</output>
+              </div>
+            </div>
+          </div>
+
+          <div id="obliqueBar" class="hidden">
+            <div class="grid-cell">
+              <div class="cell-head"><span class="dot dob"></span>斜位重建 Oblique</div>
+              <canvas id="sliceOblique" class="slice-canvas"></canvas>
+              <div class="slice-ctl">
+                <span class="octl">θ <input type="range" id="obliqueTheta" min="0" max="360" value="0" /><output id="obliqueThetaVal">0</output>°</span>
+                <span class="octl">φ <input type="range" id="obliquePhi" min="0" max="90" value="0" /><output id="obliquePhiVal">0</output>°</span>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <!-- 无构建依赖：UMD 库以全局变量注入，Three 通过 import map 解析 -->
+    <script src="./vendor/dicomParser.js"></script>
+    <script src="./vendor/jszip.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three.module.js",
+          "three/examples/jsm/controls/OrbitControls.js": "./vendor/OrbitControls.js"
+        }
+      }
+    </script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
